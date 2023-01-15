@@ -14,7 +14,7 @@ int main(void)
         int retval;
 
         /* Print prompt */
-        printf("sshell$ ");
+        printf("sshell@ucd$ ");
         fflush(stdout);
 
         /* Get command line */
@@ -34,13 +34,13 @@ int main(void)
         /* Builtin command */
         if (!strcmp(cmd, "exit")) {
             fprintf(stderr, "Bye...\n");
+            printf("+ completed 'exit' [0]\n");
             break;
         }
 
         /* Regular command */
         retval = system(cmd);
-        fprintf(stdout, "Return status value for '%s': %d\n",
-            cmd, retval);
+        printf("+ completed '%s' [%d]\n", cmd, retval);
     }
 
     return EXIT_SUCCESS;
