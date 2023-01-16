@@ -43,6 +43,18 @@ int main(void)
             fflush(stdout);
         }
         
+        char *test;
+        char *output = "";
+        test = strtok(cmd, ">");
+        if (test) {
+            strcpy(cmd, test);
+            output = strtok(NULL, " ");
+            
+        }
+        
+        printf("output: '%s'\n", output);
+        
+        
         char *array[16];
         char *token;
         token = strtok(cmd, " ");
@@ -76,7 +88,14 @@ int main(void)
             waitpid(-1, &status, 0);
             
             retval = WEXITSTATUS(status);
+            
+            if (output) {
+                freopen("/dev/tty", "w", stdout);
+            }
         } else {
+            if (output) {
+                freopen(output, "w+", stdout); 
+            }
             execvp(array[0], array);
             exit(1);
         }
