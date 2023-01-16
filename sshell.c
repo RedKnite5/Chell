@@ -31,26 +31,18 @@ int main(void)
 
         /* Get command line */
         fgets(cmd, CMDLINE_MAX, stdin);
-
+        
+        /* Remove trailing newline from command line */
+        nl = strchr(cmd, '\n');
+        if (nl)
+            *nl = '\0';
+        
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {
             printf("%s", cmd);
             fflush(stdout);
         }
-
-        /* Remove trailing newline from command line */
-        nl = strchr(cmd, '\n');
-        if (nl)
-            *nl = '\0';
-
-        /* Builtin command */
-        if (!strcmp(cmd, "exit")) {
-            fprintf(stderr, "Bye...\n");
-            printf("+ completed 'exit' [0]\n");
-            break;
-        }
-
-        /* Regular command */
+        
         char *array[16];
         char *token;
         token = strtok(cmd, " ");
@@ -63,6 +55,22 @@ int main(void)
             arg += 1;
         }
         
+        //cmd = array[0];
+
+        /* Builtin command */
+        if (!strcmp(cmd, "exit")) {
+            fprintf(stderr, "Bye...\n");
+            printf("+ completed 'exit' [0]\n");
+            break;
+        } else if (!strcmp(cmd, "cd")) {
+            //printf("Array[1]: '%s'\n", array[1]);
+            chdir(array[1]);
+            continue;
+        }
+        
+
+
+        /* Regular command */
         int status;
         if (fork()) {
             waitpid(-1, &status, 0);
