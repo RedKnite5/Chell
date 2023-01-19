@@ -19,25 +19,25 @@ size_t string_len(const char *str) {
 // got this from https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 // len is size of output buffer. Not string
 size_t trimwhitespace(char *out, size_t len, const char *str) {
-    if(len == 0)
+    if (len == 0)
         return 0;
 
     const char *end;
     size_t out_size;
 
     // Trim leading space
-    while(isspace((unsigned char)*str)) {
+    while (isspace((unsigned char)*str)) {
         str++;
     }
 
-    if(*str == 0) {  // All spaces?
+    if (*str == 0) {  // All spaces?
         *out = 0;
         return 1;
     }
 
     // Trim trailing space
     end = str + strlen(str) - 1;
-    while(end > str && isspace((unsigned char)*end)) {
+    while (end > str && isspace((unsigned char)*end)) {
         end--;
     }
     end++;
@@ -65,22 +65,25 @@ size_t split_string(char **array, char *str, char *split) {
     char save[CMDLINE_MAX] = "";
     printf("input: '%s'\n", str);
     printf("split: '%s'\n", split);
-    strcpy(save, str);
-    printf("save: '%s'\n", save);
-    char *token = strtok(str, split);
+    //strcpy(save, str);
+    //printf("save: '%s'\n", save);
+    char *token = strtok(str, ">");
     char stripped[CMDLINE_MAX] = "";
     printf("token: '%s'\n", token);
-    //if (token == NULL) {
-    //    printf("str: '%s'\n", save);
-    //    array[0] = save;
-    //    array[1] = NULL;
-    //    return 1;
-    //}
+    printf("token bool: '%d'\n", token == NULL);
+    printf("token_content: '%d'\n", *token);
+    
+    if (token == NULL) {
+        //printf("str: '%s'\n", save);
+        array[0] = str;
+        array[1] = NULL;
+        return 1;
+    }
     
     size_t arg = 0;
     while (token != NULL) {
         trimwhitespace(stripped, CMDLINE_MAX, token);
-        printf("stripped: '%s'\n", token);
+        printf("stripped: '%s'\n", stripped);
         array[arg] = stripped;
         token = strtok(NULL, split);
         arg += 1;
@@ -151,6 +154,24 @@ int main(void) {
     
     return 0;
     */
+    
+    /*
+    char array[50];
+    char *array2[50];
+    char *str = "ls";
+    trimwhitespace(array, 50, str);
+    split_string(array2, array, ">");
+    printf("array2: '%s'\n", array2[0]);
+    
+    return 0;
+    */
+    
+    //char *str = "ls";
+    //char *token = strtok(str, ">");
+    //printf("token: '%s'\n", token);
+    
+    //return 0;
+    
     
     
     char cmd[CMDLINE_MAX];
