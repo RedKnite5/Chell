@@ -24,11 +24,11 @@ char *mytok(char *str, const char *delim) {
 }
 */
 
-size_t string_len(const char *str) {
-    size_t count = 0;
-    for (count=0; str[count] != '\0'; count++) {}
-    return count;
-}
+//size_t string_len(const char *str) {
+//    size_t count = 0;
+//    for (count=0; str[count] != '\0'; count++) {}
+//    return count;
+//}
 
 // got this from https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 // len is size of output buffer. Not string
@@ -184,6 +184,7 @@ int main(void) {
     split_string(array, str, "|");
     printf("stripped ls: '%s'\n", array[0]);
     split_string(array2, array[0], "+");
+    printf("should be ls: '%s'\n", array2[0]);
     
     return 0;
     
