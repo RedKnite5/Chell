@@ -103,9 +103,9 @@ size_t split_string(char **array, char *str, char *split) {
     size_t arg = 0;
     while (strlen(token) > 0) {
         printf("token while: '%s'\n", token);
-        trimwhitespace(stripped, CMDLINE_MAX, token);
-        printf("stripped: '%s'\n", stripped);
-        array[arg] = stripped;
+        //trimwhitespace(stripped, CMDLINE_MAX, token);
+        //printf("stripped: '%s'\n", stripped);
+        array[arg] = token;
         token = strtok(NULL, split);
         printf("arg: '%ld'\n", arg);
         printf("token after: '%s'\n", token);
