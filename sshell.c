@@ -181,7 +181,7 @@ int main(void) {
     char *array[50];
     char *array2[50];
     char *str = "ls";
-    split_string(array, str, "s");
+    split_string(array, str, "|");
     printf("stripped ls: '%s'\n", array[0]);
     split_string(array2, array[0], "+");
     
