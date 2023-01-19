@@ -9,6 +9,12 @@
 
 #define CMDLINE_MAX 512
 
+char *mytok(char *str, char delim) {
+    for () {
+        
+    }
+}
+
 
 size_t string_len(const char *str) {
     size_t count = 0;
@@ -64,14 +70,16 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
 size_t split_string(char **array, char *str, char *split) {
     char save[CMDLINE_MAX] = "";
     printf("input: '%s'\n", str);
+    printf("weird: '%s'\n", *(str+2));
     printf("split: '%s'\n", split);
     //strcpy(save, str);
     //printf("save: '%s'\n", save);
+    printf("str right before: '%s'\n", str);
     char *token = strtok(str, ">");
     char stripped[CMDLINE_MAX] = "";
     printf("token: '%s'\n", token);
-    printf("token bool: '%d'\n", token == NULL);
-    printf("token_content: '%d'\n", *token);
+    //printf("token bool: '%d'\n", token == NULL);
+    //printf("token_content: '%d'\n", *token);
     
     if (token == NULL) {
         //printf("str: '%s'\n", save);
