@@ -9,12 +9,13 @@
 
 #define CMDLINE_MAX 512
 
+/*
 char *mytok(char *str, char delim) {
     for () {
         
     }
 }
-
+*/
 
 size_t string_len(const char *str) {
     size_t count = 0;
@@ -47,13 +48,13 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
         end--;
     }
     end++;
-    printf("start: '%d'\n", str);
-    printf("end: '%s'\n", end);
+    //printf("start: '%d'\n", str);
+    //printf("end: '%s'\n", end);
 
     // Set output size to minimum of trimmed string length and buffer size minus 1
     if ((end - str) < (long int)len-1) {
         out_size = end - str + 1;
-        printf("out_size: '%d'\n", out_size);
+        //printf("out_size: '%d'\n", out_size);
     } else {
         out_size = len-1;
     }
@@ -68,20 +69,20 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
 
 
 size_t split_string(char **array, char *str, char *split) {
-    char save[CMDLINE_MAX] = "";
-    printf("input: '%s'\n", str);
-    printf("weird: '%s'\n", *(str+2));
-    printf("split: '%s'\n", split);
+    //char save[CMDLINE_MAX] = "";
+    //printf("input: '%s'\n", str);
+    //printf("weird: '%s'\n", *(str+2));
+    //printf("split: '%s'\n", split);
     //strcpy(save, str);
     //printf("save: '%s'\n", save);
-    printf("str right before: '%s'\n", str);
-    char *token = strtok(str, ">");
+    //printf("str right before: '%s'\n", str);
+    char *token = strtok(str, split);
     char stripped[CMDLINE_MAX] = "";
-    printf("token: '%s'\n", token);
+    //printf("token: '%s'\n", token);
     //printf("token bool: '%d'\n", token == NULL);
     //printf("token_content: '%d'\n", *token);
     
-    if (token == NULL) {
+    if (token == NULL || strcmp(token, "")) {
         //printf("str: '%s'\n", save);
         array[0] = str;
         array[1] = NULL;
@@ -91,7 +92,7 @@ size_t split_string(char **array, char *str, char *split) {
     size_t arg = 0;
     while (token != NULL) {
         trimwhitespace(stripped, CMDLINE_MAX, token);
-        printf("stripped: '%s'\n", stripped);
+        //printf("stripped: '%s'\n", stripped);
         array[arg] = stripped;
         token = strtok(NULL, split);
         arg += 1;
@@ -102,13 +103,13 @@ size_t split_string(char **array, char *str, char *split) {
 
 int run_commands(char *cmd) {
     int retval;
-    printf("cmd: '%s'\n\n", cmd);
+    //printf("cmd: '%s'\n\n", cmd);
     
     /* Split command on redirection operator */
     char *output = NULL;
     char *redirection[3];
     split_string(redirection, cmd, ">");
-    printf("\nafter split: '%s'\n", redirection[0]);
+    //printf("\nafter split: '%s'\n", redirection[0]);
     strcpy(cmd, redirection[0]);
     if (redirection[1] != NULL) {
         output = redirection[1];
