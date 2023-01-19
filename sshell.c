@@ -10,10 +10,17 @@
 #define CMDLINE_MAX 512
 
 /*
-char *mytok(char *str, char delim) {
-    for () {
-        
+char *mytok(char *str, const char *delim) {
+    static char *ptr = str;
+    if (str == NULL) {
+        ptr++;
     }
+    while (*ptr != *delim || *ptr == '\0') {
+        ptr[0] = '\0';
+        
+        ptr++;
+    }
+    return str;
 }
 */
 
@@ -53,7 +60,7 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
 
     // Set output size to minimum of trimmed string length and buffer size minus 1
     if ((end - str) < (long int)len-1) {
-        out_size = end - str + 1;
+        out_size = end - str;
         //printf("out_size: '%d'\n", out_size);
     } else {
         out_size = len-1;
@@ -62,7 +69,7 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
 
     // Copy trimmed string and add null terminator
     memcpy(out, str, out_size);
-    out[out_size] = '\0';
+    out[out_size] = 0;
 
     return out_size;
 }
@@ -72,30 +79,40 @@ size_t split_string(char **array, char *str, char *split) {
     //char save[CMDLINE_MAX] = "";
     //printf("input: '%s'\n", str);
     //printf("weird: '%s'\n", *(str+2));
-    //printf("split: '%s'\n", split);
+    printf("split: '%s'\n", split);
     //strcpy(save, str);
     //printf("save: '%s'\n", save);
     //printf("str right before: '%s'\n", str);
     char *token = strtok(str, split);
     char stripped[CMDLINE_MAX] = "";
-    //printf("token: '%s'\n", token);
-    //printf("token bool: '%d'\n", token == NULL);
-    //printf("token_content: '%d'\n", *token);
+    printf("token: '%s'\n", token);
+    printf("token len: '%ld'\n", strlen(token));
+    printf("token bool: '%d'\n", token == NULL);
+    //printf("token_content: '%d'\n", token[0]);
     
-    if (token == NULL || strcmp(token, "")) {
-        //printf("str: '%s'\n", save);
+    /*
+    if (token == NULL || token[0] == 0) {
+        printf("str: '%s'\n", str);
+        printf("HERE");
         array[0] = str;
         array[1] = NULL;
         return 1;
     }
+    */
     
     size_t arg = 0;
-    while (token != NULL) {
+    while (strlen(token) > 0) {
+        printf("token while: '%s'\n", token);
         trimwhitespace(stripped, CMDLINE_MAX, token);
-        //printf("stripped: '%s'\n", stripped);
+        printf("stripped: '%s'\n", stripped);
         array[arg] = stripped;
         token = strtok(NULL, split);
+        printf("arg: '%ld'\n", arg);
+        printf("token after: '%s'\n", token);
         arg += 1;
+        if (token == NULL) {
+            break;
+        }
     }
     array[arg] = NULL;
     return arg;
@@ -109,7 +126,7 @@ int run_commands(char *cmd) {
     char *output = NULL;
     char *redirection[3];
     split_string(redirection, cmd, ">");
-    //printf("\nafter split: '%s'\n", redirection[0]);
+    printf("\nafter split: '%s'\n", redirection[0]);
     strcpy(cmd, redirection[0]);
     if (redirection[1] != NULL) {
         output = redirection[1];
@@ -118,8 +135,14 @@ int run_commands(char *cmd) {
     
     /* Split command into arguments */
     char *array[16];
-    split_string(array, cmd, " ");
+    int b = split_string(array, cmd, " ");
     strcpy(cmd, array[0]);
+    
+    for (int i=0; i<b; i++) {
+        printf("array %d: '%s'\n", i, array[i]);
+    }
+    
+    
     
     /* Builtin command */
     if (!strcmp(array[0], "exit")) {
@@ -154,15 +177,16 @@ int run_commands(char *cmd) {
 
 
 int main(void) {
-    /*
+    
     char *array[50];
     char *array2[50];
     char *str = "ls";
-    split_string(array, str, ">");
-    split_string(array2, array[0], ">");
+    split_string(array, str, "s");
+    printf("stripped ls: '%s'\n", array[0]);
+    split_string(array2, array[0], "+");
     
     return 0;
-    */
+    
     
     /*
     char array[50];
@@ -181,6 +205,29 @@ int main(void) {
     
     //return 0;
     
+    // size_t trimwhitespace(char *out, size_t len, const char *str)
+    
+    /*
+    char *str = " test ";
+    char *str2 = " test2\n ";
+    char *str3 = "test3\n ";
+    char *str4 = "  test4";
+    char *str5 = "test5";
+    char *str6 = "";
+    
+    
+    char buff[50] = "";
+    
+    trimwhitespace(buff, 50, str); printf("str: '%s'\n", buff);
+    trimwhitespace(buff, 50, str2); printf("str2: '%s'\n", buff);
+    trimwhitespace(buff, 50, str3); printf("str3: '%s'\n", buff);
+    trimwhitespace(buff, 50, str4); printf("str4: '%s'\n", buff);
+    trimwhitespace(buff, 50, str5); printf("str5: '%s'\n", buff);
+    trimwhitespace(buff, 50, str6); printf("str6: '%s'\n", buff);
+    printf("empty: '%s'\n", buff[0]);
+    
+    return 0;
+    */
     
     
     char cmd[CMDLINE_MAX];
