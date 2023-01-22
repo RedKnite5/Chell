@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/wait.h>
+#include <stdbool.h> // Header-file for boolean data-type.
 #include <ctype.h>
 
 
@@ -55,27 +57,27 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
 
 
 size_t split_string(char **array, char *str, char *split) {
-    printf("str_input: '%s'\n", str);
-    printf("split_with: '%s'\n", split);
-
     char str_copy[50];
     memcpy(str_copy, str, 50);
 
     char *token = strtok(str_copy, split);
     char stripped[CMDLINE_MAX] = "";
-
-    printf("token_strtok(): '%s'\n", token);
     
     size_t arg = 0;
     while (strlen(token) > 0) {
         trimwhitespace(stripped, CMDLINE_MAX, token);
-        array[arg] = stripped;
-        token = strtok(NULL, split);
+        /*array[arg] = stripped;*/
+
+        array[arg] = (char *)malloc(sizeof(char) * (strlen(stripped) + 1));
+        strcpy(array[arg],stripped);
+
         arg += 1;
+        token = strtok(NULL, split);
         if (token == NULL) {
             break;
         }
-    }
+    } 
+
     array[arg] = NULL;
 
 	char* ptr = strchr(str, *split);
@@ -88,14 +90,13 @@ size_t split_string(char **array, char *str, char *split) {
     return arg;
 }
 
-int run_commands(char *cmd) {
+int run_commands(char *cmd, bool flag) {
     int retval;
     
     /* Split command on redirection operator */
     char *output = NULL;
     char *redirection[10];
     split_string(redirection, cmd, ">");
-    printf("\nafter split: '%s'\n", redirection[0]);
     strcpy(cmd, redirection[0]);
 
     if (redirection[1] != NULL) {
@@ -107,7 +108,8 @@ int run_commands(char *cmd) {
     char *array[16];
     int b = split_string(array, cmd, " ");
     strcpy(cmd, array[0]);
-    
+
+    /* Note that redirection elements may not print, because the redirection array is seperate from the command array*/
     for (int i=0; i<b; i++) {
         printf("array %d: '%s'\n", i, array[i]);
     }
@@ -127,17 +129,28 @@ int run_commands(char *cmd) {
 
     /* Regular command */
     int status;
-    if (fork()) {
-        waitpid(-1, &status, 0);
+
+    if (!flag) {
+        if (fork()) {
+            waitpid(-1, &status, 0);
         
-        retval = WEXITSTATUS(status);
-    } else {
-        if (output != NULL) {
-            freopen(output, "w+", stdout); 
+            retval = WEXITSTATUS(status);
+        } else {
+            if (output != NULL) {
+                freopen(output, "w+", stdout); 
+            }
+
+            printf("!Flag Execution %d: '%s'\n", 0, array[0]);
+            execvp(array[0], array);
+
+            exit(1);
         }
+    } else {
+        printf("+Flag Execution %d: '%s'\n", 0, array[0]);
         execvp(array[0], array);
         exit(1);
     }
+
     return retval;
 }
 
@@ -169,51 +182,63 @@ int main(void) {
             fflush(stdout);
         }
         
-        /* Tokenize arguments using pipe character as delimiter (At most 5 pipe ops) */
-        char *pipe_commands[5];
+        /* Tokenize arguments using pipe character as delimiter (At most 3 pipe ops) */
+        char *pipe_commands[3];
         size_t arg = split_string(pipe_commands, cmd, "|");
         
+        int NUM_PIPES = arg;
+        
+        /* Pipe Commands Present*/
+        if (arg > 1) {
+            pid_t pid;
+            int mypipes[NUM_PIPES][2];
 
-        /* Pipe handling */
-        for (size_t i = arg; i > 0; i--) {
-            if (i > 1) {
-                pid_t pid;
-                int mypipe[2];
-                
-                if (pipe(mypipe)) {
-                    exit(EXIT_FAILURE);
+            for (int i = 0; i < NUM_PIPES; i++) {
+                if(pipe(mypipes[i])) {
+                    fprintf(stderr, "Pipe %d failed.\n", i);
+                    return EXIT_FAILURE;
                 }
-                
+            }
+
+            /* Create child processes*/
+            for(int i = 0; i < NUM_PIPES; i++) {
                 pid = fork();
                 if (pid == (pid_t) 0) {
-                    /* This is the child process.
-                     Close other end first. */
-                    close(mypipe[1]);
-                    
-                    dup2(mypipe[0], STDIN_FILENO);
-                    
-                    if (i > 2) {
-                        continue;
+                    /* Child Process, Close Parent Pipe*/
+                    close(mypipes[i][1]);
+
+                    if (arg > 2) {
+                        if (i == 0) {
+                            dup2(mypipes[0][0], STDIN_FILENO);    /* READ FROM PARENTS OUTPUT */
+                        } else if (i < NUM_PIPES) {
+                            dup2(mypipes[0][i-1], STDIN_FILENO); /* READ FROM PREVIOUS COMMANDS OUTPUT*/
+                            dup2(mypipes[i][1], STDOUT_FILENO);   /* WRITE TO NEXT COMMANDS INPUT*/
+                        } else if (i == NUM_PIPES) {
+                            dup2(mypipes[0][i-1], STDIN_FILENO);
+                        }
                     } else {
-                        retval = run_commands(pipe_commands[i-1]);
-                        break;
+                        dup2(mypipes[i][0], STDIN_FILENO);
                     }
+
+                    retval = run_commands(pipe_commands[i+1], true); 
                 } else if (pid < (pid_t) 0) {
-                    /* The fork failed. */
-                    fprintf(stderr, "Fork failed.\n");
-                    retval = EXIT_FAILURE;
-                } else {
-                    /* This is the parent process.
-                     Close other end first. */
-                    close (mypipe[0]);
-                    
-                    dup2(mypipe[1], STDOUT_FILENO);
-                    run_commands(pipe_commands[i-1]);
+                    fprintf(stderr, "Fork %d failed.\n", i);
+                    return EXIT_FAILURE;
                 }
-            } else {
-                retval = run_commands(pipe_commands[0]);
             }
+
+            /* This is the parent process. Close other end first. */
+            for (int i = 0; i < NUM_PIPES; i++) {
+                close(mypipes[i][0]);
+                dup2(mypipes[i][1], STDOUT_FILENO);
+                printf("Parent Changed: %d: \n", i);
+                run_commands(pipe_commands[i], true);
+            }
+        } else { /* No Pipe Commands*/
+            printf("3\n");
+            retval = run_commands(pipe_commands[0], false);
         }
+        
         
         fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
     }
