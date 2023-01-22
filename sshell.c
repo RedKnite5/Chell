@@ -232,7 +232,7 @@ int main(void) {
                 close(mypipes[i][0]);
                 dup2(mypipes[i][1], STDOUT_FILENO);
                 printf("Parent Changed: %d: \n", i);
-                run_commands(pipe_commands[i], true);
+                run_commands(pipe_commands[i], false);
             }
         } else { /* No Pipe Commands*/
             printf("3\n");
