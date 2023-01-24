@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/wait.h>
-#include <stdbool.h> // Header-file for boolean data-type.
+#include <stdbool.h>  // booleans
 #include <ctype.h>
 
 
@@ -56,9 +56,9 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
 }
 
 
-size_t split_string(char **array, char *str, char *split) {
-    char str_copy[50];
-    memcpy(str_copy, str, 50);
+size_t split_string(char **array, const char *str, const char *split) {
+    char str_copy[CMDLINE_MAX];
+    memcpy(str_copy, str, CMDLINE_MAX);
 
     char *token = strtok(str_copy, split);
     char stripped[CMDLINE_MAX] = "";
@@ -80,14 +80,32 @@ size_t split_string(char **array, char *str, char *split) {
 
     array[arg] = NULL;
 
-	char* ptr = strchr(str, *split);
-	if (ptr != NULL) {
-		ptr = ptr + 1;
-		*str = *ptr;
-	}
+    /*
+    char* ptr = strchr(str, *split);  // doesnt support multi char splits
+    if (ptr != NULL) {
+        ptr = ptr + 1;
+        *str = *ptr;
+    }
+    */
 
     //printf("\n");
     return arg;
+}
+
+char parse_redirection(char **output, const char *cmd) {
+    char str_copy[CMDLINE_MAX];
+    memcpy(str_copy, cmd, CMDLINE_MAX);
+    
+    split_string(output, cmd, ">>");
+    if (output != NULL) {
+        return 'a';
+    }
+    
+    split_string(output, cmd, ">");
+    if (output != NULL) {
+        return 'w';
+    }
+    return 'x';
 }
 
 int run_commands(char *cmd, bool flag) {
@@ -96,8 +114,8 @@ int run_commands(char *cmd, bool flag) {
     
     /* Split command on redirection operator */
     char *output = NULL;
-    char *redirection[10];
-    split_string(redirection, cmd, ">");
+    char *redirection[3];
+    char mode = parse_redirection(redirection, cmd);
     strcpy(cmd, redirection[0]);
 
     if (redirection[1] != NULL) {
@@ -138,7 +156,11 @@ int run_commands(char *cmd, bool flag) {
             retval = WEXITSTATUS(status);
         } else {
             if (output != NULL) {
-                freopen(output, "w+", stdout); 
+                if (mode == 'w') {
+                    freopen(output, "w+", stdout);
+                } else {
+                    freopen(output, "a+", stdout);
+                }
             }
 
             //fprintf(stderr, "!Flag Execution %d: '%s'\n", 0, array[0]);
