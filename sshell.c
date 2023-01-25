@@ -141,7 +141,7 @@ int run_commands(char *cmd, bool flag) {
         exit(EXIT_SUCCESS);
     } else if (!strcmp(array[0], "cd")) {
         int retval = chdir(array[1]);
-        fprintf(stderr, "+ completed 'cd' [%d]\n", retval);
+        fprintf(stderr, "+ completed 'cd %s' [%d]\n", array[1], retval);
         return retval;
     }
     
@@ -193,17 +193,18 @@ int main(void) {
         /* Get User Input */
         fgets(cmd, CMDLINE_MAX, stdin);
         
+        /* Print command line if stdin is not provided by terminal */
+        if (!isatty(STDIN_FILENO)) {
+            printf("%s", cmd);
+            fflush(stdout);
+        }
+        
         /* Remove trailing newline */
         newLine = strchr(cmd, '\n');
         if (newLine) {
             *newLine = '\0';
         }
         
-        /* Print command line if stdin is not provided by terminal */
-        if (!isatty(STDIN_FILENO)) {
-            printf("%s", cmd);
-            fflush(stdout);
-        }
         
         if (!strcmp(cmd, "")) {
             continue;
