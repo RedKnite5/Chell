@@ -269,7 +269,6 @@ int main(void) {
                 }
             }
         } else {  /* No Pipe Commands*/
-            printf("3\n");
             retval = run_commands(pipe_commands[0], false);
         }
         
