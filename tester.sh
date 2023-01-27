@@ -223,6 +223,65 @@ out_redir() {
 }
 TEST_CASES+=("out_redir")
 
+## Mine: Can not open output redirection
+cannot_open_redir() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "echo hack > /etc/passwd\nexit\n"
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    line_array+=("$(select_line "${STDERR}" "2")")
+    local corr_array=()
+    corr_array+=("Error: cannot open output file")
+    corr_array+=("Bye...")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("cannot_open_redir")
+
+
+## Mine: No output redirection file
+no_redir_file() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "echo >\nexit\n"
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    line_array+=("$(select_line "${STDERR}" "2")")
+    local corr_array=()
+    corr_array+=("Error: no output file")
+    corr_array+=("Bye...")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("no_redir_file")
+
+## Mine: Missing command
+missing_cmd() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "> file\n| grep hi\nls |\nexit\n"
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    line_array+=("$(select_line "${STDERR}" "2")")
+    line_array+=("$(select_line "${STDERR}" "3")")
+    line_array+=("$(select_line "${STDERR}" "4")")
+    local corr_array=()
+    corr_array+=("Error: missing command")
+    corr_array+=("Error: missing command")
+    corr_array+=("Error: missing command")
+    corr_array+=("Bye...")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("missing_cmd")
+
 ## Piped commands
 pipe() {
     log "--- Running test case: ${FUNCNAME} ---"
@@ -259,6 +318,24 @@ pipe_redirect() {
     log "${score}"
 }
 TEST_CASES+=("pipe_redirect")
+
+## Mine: Mislocated output redirection
+mislocated_redir() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "echo Hello world > t | cat t\nexit\n"
+    rm -f t
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    local corr_array=()
+    corr_array+=("Error: mislocated output redirection")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("mislocated_redir")
+
 
 
 ## Extra feature #1: stdout appending
