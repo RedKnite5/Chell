@@ -241,6 +241,26 @@ pipe() {
 }
 TEST_CASES+=("pipe")
 
+
+## Mine: Piped commands end with redirect
+pipe_redirect() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    echo -e "Test one\nTest two" > t
+    run_test_case "cat t | grep two > out\ncat out\nexit\n"
+    rm -f t out
+
+    local line_array=()
+    line_array+=("$(select_line "${STDOUT}" "3")")
+    local corr_array=()
+    corr_array+=("Test two")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("pipe_redirect")
+
+
 ## Extra feature #1: stdout appending
 stdout_app_simple() {
     log "--- Running test case: ${FUNCNAME} ---"
@@ -282,6 +302,59 @@ background() {
     log "${score}"
 }
 TEST_CASES+=("background")
+
+
+## Mine: All piped commands exit
+piped_cmds_exit() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    echo -e "Test one\nThree\nTest two" > t
+    run_test_case "cat t|grep Test\ncat t|cat|grep Three\nexit\n"
+
+    local line_array=()
+    line_array+=("$(select_line "${STDOUT}" "2")")
+    line_array+=("$(select_line "${STDOUT}" "3")")
+    line_array+=("$(select_line "${STDERR}" "1")")
+    line_array+=("$(select_line "${STDOUT}" "5")")
+    line_array+=("$(select_line "${STDERR}" "2")")
+    local corr_array=()
+
+    corr_array+=("Test one")
+    corr_array+=("Test two")
+    corr_array+=("+ completed 'cat t|grep Test' [0]")
+    corr_array+=("Three")
+    corr_array+=("+ completed 'cat t|cat|grep Three' [0]")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("piped_cmds_exit")
+
+## Mine: cd non existant directory
+cd_nonex() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "mkdir -p dir_test\ncd dir_test\ncd non_existant\npwd\nexit\n"
+    rm -rf dir_test
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "3")")
+    line_array+=("$(select_line "${STDERR}" "4")")
+    line_array+=("$(select_line "${STDOUT}" "5")")
+    line_array+=("$(select_line "${STDERR}" "6")")
+    local corr_array=()
+    corr_array+=("Error: cannot cd into directory")
+    corr_array+=("+ completed 'cd non_existant' [1]")
+    corr_array+=("${PWD}/dir_test")
+    corr_array+=("Bye...")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("cd_nonex")
+
+
+
 
 #
 # Main functions

@@ -67,7 +67,7 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
     const char *end;
     size_t out_size;
 
-    // Trim leading space
+    // Move str to first non whitespace char
     while (isspace((unsigned char)*str)) {
         str++;
     }
@@ -90,11 +90,10 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
     } else {
         out_size = len-1;
     }
-    //out_size = (end - str) < (long int)len-1 ? (size_t)(end - str) : len-1;
 
     // Copy trimmed string and add null terminator
     memcpy(out, str, out_size);
-    out[out_size] = 0;
+    out[out_size] = '\0';
 
     return out_size;
 }
