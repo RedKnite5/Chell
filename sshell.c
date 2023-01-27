@@ -106,7 +106,7 @@ bool background_check(char *cmd, int *error) {
         *amper = '\0';
         return false;
     } else {
-        printf("Error: mislocated background sign\n"); // Found Ampersand not at the end
+        fprintf(stderr, "Error: mislocated background sign\n"); // Found Ampersand not at the end
         *error = 1;
         return false;  // doesn't matter true or false
     }
@@ -301,7 +301,7 @@ int main(void) {
 
         int NUM_PIPES = arg-1;
 
-        //pid_t pipe_pids[MAX_PIPES] = {0, 0, 0, 0, 0};
+        pid_t pipe_pids[MAX_PIPES] = {0, 0, 0, 0, 0};
         pid_t pipe_pid;  // not used
 
         /* Pipe Commands Present*/
@@ -309,25 +309,22 @@ int main(void) {
             pid_t pid;
             int mypipes[arg][2];
 
-            for (int i = 0; i < NUM_PIPES; i++) {
-                if(pipe(mypipes[i])) {
-                    fprintf(stderr, "Pipe %d failed.\n", i);
-                    return EXIT_FAILURE;
-                }
-            }
-
             for (int i=0; i<NUM_PIPES; i++) {
-                //fprintf(stderr, "command: '%s' i: %d\n", pipe_commands[i], i);
                 char *arrow = strchr(pipe_commands[i], '>');
                 if (arrow != NULL) {
                     fprintf(stderr, "Error: mislocated output redirection\n");
                     continue;
                 }
-                //fprintf(stderr, "command: '%s' i: %d\n", pipe_commands[i], i);
             }
 
             /* Create child processes*/
             for(int i = NUM_PIPES; i >= 0; i--) {
+                if (i > 0) {
+                    if(pipe(mypipes[i-1])) {
+                        fprintf(stderr, "Pipe %d failed.\n", i-1);
+                        return EXIT_FAILURE;
+                    }
+                }
                 pid = fork();
                 if (pid == (pid_t) 0) {
                     /* This is the child process */
@@ -335,35 +332,41 @@ int main(void) {
                         if (i == 0) {
                             close(mypipes[0][0]);
                             dup2(mypipes[0][1], STDOUT_FILENO);    /* WRITE TO NEXT COMMANDS INPUT */
+                            close(mypipes[0][1]);
                         } else if (i < NUM_PIPES) {
                             close(mypipes[i-1][1]);
                             dup2(mypipes[i-1][0], STDIN_FILENO);  /* READ FROM PREVIOUS COMMANDS OUTPUT */
+                            close(mypipes[i-1][0]);
                             close(mypipes[i][0]);
                             dup2(mypipes[i][1], STDOUT_FILENO);   /* WRITE TO NEXT COMMANDS INPUT */
+                            close(mypipes[i][1]);
                         } else if (i == NUM_PIPES) {
                             close(mypipes[i-1][1]);
                             dup2(mypipes[i-1][0], STDIN_FILENO);    /* READ FROM PREVIOUS COMMANDS OUTPUT */
+                            close(mypipes[i-1][0]);
                         }
                     } else {
                         if (i == 0) {
                             close(mypipes[0][0]);
                             dup2(mypipes[0][1], STDOUT_FILENO);
+                            close(mypipes[0][1]);
                         } else {
                             close(mypipes[0][1]);
                             dup2(mypipes[0][0], STDIN_FILENO);
+                            close(mypipes[0][0]);
                         }
                     }
 
                     int error = 0;
                     run_commands(pipe_commands[i], true, wait, &pipe_pid, &error);
+                    fprintf(stderr, "failed %s", pipe_commands[i]);
                     exit(EXIT_FAILURE);
                 } else if (pid < (pid_t) 0) {
                     fprintf(stderr, "Fork %d failed.\n", i);
                     exit(EXIT_FAILURE);
                 } else {
                     /* This is the parent process */
-                    //pipe_pids[arg-i] = pid;
-                    //printf("writing down pid: %d at i: %d\n", pid, arg-i);
+                    pipe_pids[i] = pid;
                     close(mypipes[i][0]);
                     close(mypipes[i][1]);
                 }
@@ -382,11 +385,9 @@ int main(void) {
         }
 
         if (wait && arg > 1) {
-            waitpid(0, &retval, 0);  // inconsistant
-            /*for (size_t i=0; i<arg; i++) {
-                printf("waiting on pid: %d i: %d\n", pipe_pids[0], 0);
+            for (size_t i=0; i<arg; i++) {
                 waitpid(pipe_pids[i], &retval, 0);
-            }*/
+            }
         }
 
         int job_status;
