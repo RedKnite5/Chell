@@ -8,8 +8,54 @@
 #include <ctype.h>
 
 
-
 #define CMDLINE_MAX 512
+#define MAX_PIPES 5
+#define MAX_ARGS 16
+#define UNLIKELY_RETVAL 25
+
+struct Job {
+    char cmd[CMDLINE_MAX];
+    pid_t pid;
+};
+
+struct Node {
+	struct Job data;
+	struct Node *next;
+};
+
+void push(struct Node **head, struct Job data) {
+	struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
+
+	new_node->data = data;
+	new_node->next = *head;
+
+	(*head) = new_node;
+}
+
+void delete(struct Node *head, int pid) {
+    if (head == NULL) {
+        return;
+    }
+
+    struct Node *prev = NULL;
+    struct Node *current = head;
+    while (current->data.pid != pid) {
+        if (current->next == NULL) {
+            return;
+        }
+        prev = current;
+        current = current->next;
+    }
+
+    if (current == head) {
+        head = head->next;
+        return;
+    }
+
+    prev->next = current->next;
+}
+
+
 
 // got this from https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 // len is size of output buffer. Not string
@@ -36,13 +82,10 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
         end--;
     }
     end++;
-    //printf("start: '%d'\n", str);
-    //printf("end: '%s'\n", end);
 
     // Set output size to minimum of trimmed string length and buffer size minus 1
     if ((end - str) < (long int)len-1) {
         out_size = end - str;
-        //printf("out_size: '%d'\n", out_size);
     } else {
         out_size = len-1;
     }
@@ -55,29 +98,27 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
     return out_size;
 }
 
-void background_check(bool *wait, char **array) {
-    int i = 0;
-    while (array[i] != NULL) {
-        char *amper = strchr(array[i], '&');
-        int last_index = strlen(array[i]) - 1;
-        if (array[i][last_index] == '&' && array[i+1] == NULL) { // Found Ampersand, Last element & Last Character
-            *wait = true;
-            array[i][last_index] = NULL;
-        } else if (!strcmp(array[i], "&") || amper != NULL) {
-            printf("Error: mislocated background sign\n"); // Found Ampersand as an argument
-            exit(1);
-        }
-        i++;
+bool background_check(char *cmd, int *error) {
+    char *amper = strchr(cmd, '&');
+    if (amper == NULL) {
+        return true;
+    } else if (*(amper+1) == '\0') {
+        *amper = '\0';
+        return false;
+    } else {
+        printf("Error: mislocated background sign\n"); // Found Ampersand not at the end
+        *error = 1;
+        return false;  // doesn't matter true or false
     }
 }
 
-size_t split_string(char **array, char *str, char *split) {
-    char str_copy[50];
-    memcpy(str_copy, str, 50);
+size_t split_string(char **array, const char *str, char *split) {
+    char str_copy[CMDLINE_MAX];
+    memcpy(str_copy, str, CMDLINE_MAX);
 
     char *token = strtok(str_copy, split);
     char stripped[CMDLINE_MAX] = "";
-    
+
     size_t arg = 0;
     while (strlen(token) > 0) {
         trimwhitespace(stripped, CMDLINE_MAX, token);
@@ -91,45 +132,66 @@ size_t split_string(char **array, char *str, char *split) {
         if (token == NULL) {
             break;
         }
-    } 
+    }
 
     array[arg] = NULL;
 
-	char* ptr = strchr(str, *split);
-	if (ptr != NULL) {
-		ptr = ptr + 1;
-		*str = *ptr;
-	}
-
-    //printf("\n");
     return arg;
 }
 
-int run_commands(char *cmd, bool flag, bool *wait) {
-    //fprintf(stderr, "Run command: %s\n", cmd);
+char parse_redirection(char **output, const char *cmd) {
+    char str_copy[CMDLINE_MAX];
+    memcpy(str_copy, cmd, CMDLINE_MAX);
+
+    split_string(output, cmd, ">>");
+    if (output != NULL) {
+        return 'a';
+    }
+
+    split_string(output, cmd, ">");
+    if (output != NULL) {
+        return 'w';
+    }
+    return 'x';
+}
+
+int run_commands(char *cmd, bool flag, bool wait, pid_t *background_pid, int *error) {
     int retval;
-    
-    /* Split command on redirection operator */
+
+    char stripped[CMDLINE_MAX];
+    trimwhitespace(stripped, CMDLINE_MAX, cmd);
+    if (*stripped == '>') {
+        fprintf(stderr, "Error: missing command\n");
+        *error = 1;
+        return 1;
+    }
+    char *end = strchr(stripped, '\0')-1;
+    if (*end == '>') {
+        fprintf(stderr, "Error: no output file\n");
+        *error = 1;
+        return 1;
+    }
+
     char *output = NULL;
-    char *redirection[10];
-    split_string(redirection, cmd, ">");
+    char *redirection[3];
+    char mode = parse_redirection(redirection, cmd);
     strcpy(cmd, redirection[0]);
 
     if (redirection[1] != NULL) {
         output = redirection[1];
     }
-    
 
     /* Split command into arguments */
-    char *array[16];
-    split_string(array, cmd, " ");
+    char *array[CMDLINE_MAX];
+    int args = split_string(array, cmd, " ");
     strcpy(cmd, array[0]);
 
-    /* Note that redirection elements may not print, because the redirection array is seperate from the command array*/
-    //for (int i=0; i<b; i++) {
-    //    fprintf(stderr, "array %d: '%s'\n", i, array[i]);
-    //}
-    
+    if (args > MAX_ARGS) {
+        fprintf(stderr, "Error: too many process arguments\n");
+        *error = 1;
+        return 1;
+    }
+
 
     /* Builtin commands */
     if (!strcmp(array[0], "exit")) {
@@ -138,22 +200,38 @@ int run_commands(char *cmd, bool flag, bool *wait) {
         exit(EXIT_SUCCESS);
     } else if (!strcmp(array[0], "cd")) {
         int retval = chdir(array[1]);
-        fprintf(stderr, "+ completed 'cd' [%d]\n", retval);
+        fprintf(stderr, "+ completed 'cd %s' [%d]\n", array[1], retval);
         return retval;
     }
-    
+
 
     /* Regular command */
     int status;
-    background_check(wait, array);
-
     if (!flag) {
-        if (fork()) {
-            waitpid(-1, &status, 0);
-            retval = WEXITSTATUS(status);
+        int pid = fork();
+        *background_pid = pid;
+        if (pid) {
+            if (wait) {
+                waitpid(pid, &status, 0);
+                retval = WEXITSTATUS(status);
+                if (retval == UNLIKELY_RETVAL) {
+                    fprintf(stderr, "Error: cannot open output file\n");
+                    *error = 1;
+                    return 1;
+                }
+            }
         } else {
+            // redirection
             if (output != NULL) {
-                freopen(output, "w+", stdout); 
+                FILE *success;
+                if (mode == 'w') {
+                    success = freopen(output, "w+", stdout);
+                } else {
+                    success = freopen(output, "a+", stdout);
+                }
+                if (success == NULL) {
+                    exit(UNLIKELY_RETVAL);
+                }
             }
 
             execvp(array[0], array);
@@ -163,18 +241,17 @@ int run_commands(char *cmd, bool flag, bool *wait) {
         execvp(array[0], array);
         exit(1);
     }
-
     return retval;
 }
 
 
 int main(void) {
-    
+    struct Node *jobs = NULL;
     char cmd[CMDLINE_MAX];
     while (1) {
         int retval;
         char *newLine;
-        bool wait = false;
+        bool wait = true;
 
         /* Shell prompt */
         printf("sshell@ucd$ ");
@@ -182,57 +259,88 @@ int main(void) {
 
         /* Get User Input */
         fgets(cmd, CMDLINE_MAX, stdin);
-        
-        /* Remove trailing newline */
-        newLine = strchr(cmd, '\n');
-        if (newLine) {
-            *newLine = '\0';
-        }
-        
+
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {
             printf("%s", cmd);
             fflush(stdout);
         }
-        
+
+        /* Remove trailing newline */
+        newLine = strchr(cmd, '\n');
+        if (newLine) {
+            *newLine = '\0';
+        }
+
         if (!strcmp(cmd, "")) {
             continue;
         }
-        
+
+        struct Job job;
+        strcpy(job.cmd, cmd);
+
+        int error = 0;
+        wait = background_check(cmd, &error);
+        if (error) {
+            continue;
+        }
+
+        pid_t background_pid;
+
+        char stripped[CMDLINE_MAX];
+        trimwhitespace(stripped, CMDLINE_MAX, cmd);
+        char *end = strchr(stripped, '\0')-1;
+        if (*stripped == '|' || *end == '|') {
+            fprintf(stderr, "Error: missing command\n");
+            continue;
+        }
+
         /* Tokenize arguments using pipe character as delimiter (At most 3 pipe ops) */
-        char *pipe_commands[3];
+        char *pipe_commands[MAX_PIPES];
         size_t arg = split_string(pipe_commands, cmd, "|");
-        
-        int NUM_PIPES = arg;
-        
+
+        int NUM_PIPES = arg-1;
+
+        //pid_t pipe_pids[MAX_PIPES] = {0, 0, 0, 0, 0};
+        pid_t pipe_pid;  // not used
+
         /* Pipe Commands Present*/
         if (arg > 1) {
             pid_t pid;
-            int mypipes[NUM_PIPES][2];
+            int mypipes[arg][2];
 
-            for (int i = 0; i < NUM_PIPES-1; i++) {
+            for (int i = 0; i < NUM_PIPES; i++) {
                 if(pipe(mypipes[i])) {
                     fprintf(stderr, "Pipe %d failed.\n", i);
                     return EXIT_FAILURE;
                 }
             }
 
+            for (int i=0; i<NUM_PIPES; i++) {
+                //fprintf(stderr, "command: '%s' i: %d\n", pipe_commands[i], i);
+                char *arrow = strchr(pipe_commands[i], '>');
+                if (arrow != NULL) {
+                    fprintf(stderr, "Error: mislocated output redirection\n");
+                    continue;
+                }
+                //fprintf(stderr, "command: '%s' i: %d\n", pipe_commands[i], i);
+            }
+
             /* Create child processes*/
-            for(int i = NUM_PIPES-1; i >= 0; i--) {
+            for(int i = NUM_PIPES; i >= 0; i--) {
                 pid = fork();
                 if (pid == (pid_t) 0) {
-                    /* Child Process, Close Parent Pipe*/
-
+                    /* This is the child process */
                     if (arg > 2) {
                         if (i == 0) {
                             close(mypipes[0][0]);
                             dup2(mypipes[0][1], STDOUT_FILENO);    /* WRITE TO NEXT COMMANDS INPUT */
-                        } else if (i < NUM_PIPES-1) {
+                        } else if (i < NUM_PIPES) {
                             close(mypipes[i-1][1]);
                             dup2(mypipes[i-1][0], STDIN_FILENO);  /* READ FROM PREVIOUS COMMANDS OUTPUT */
                             close(mypipes[i][0]);
                             dup2(mypipes[i][1], STDOUT_FILENO);   /* WRITE TO NEXT COMMANDS INPUT */
-                        } else if (i == NUM_PIPES-1) {
+                        } else if (i == NUM_PIPES) {
                             close(mypipes[i-1][1]);
                             dup2(mypipes[i-1][0], STDIN_FILENO);    /* READ FROM PREVIOUS COMMANDS OUTPUT */
                         }
@@ -246,46 +354,56 @@ int main(void) {
                         }
                     }
 
-                    run_commands(pipe_commands[i], true, &wait);
+                    int error = 0;
+                    run_commands(pipe_commands[i], true, wait, &pipe_pid, &error);
                     exit(EXIT_FAILURE);
                 } else if (pid < (pid_t) 0) {
                     fprintf(stderr, "Fork %d failed.\n", i);
                     exit(EXIT_FAILURE);
                 } else {
-                    /* This is the parent process. Close both sides of pipe. */
+                    /* This is the parent process */
+                    //pipe_pids[arg-i] = pid;
+                    //printf("writing down pid: %d at i: %d\n", pid, arg-i);
                     close(mypipes[i][0]);
                     close(mypipes[i][1]);
-                    
                 }
             }
         } else {  /* No Pipe Commands*/
-            printf("3\n");
-            retval = run_commands(pipe_commands[0], false, &wait);
-        }
-        
-        int status1;
-
-        if (wait != true) {
-            waitpid(0, &status1, 0);
-        }
-
-        
-        int status2;
-        pid_t process;
-        
-        if (wait == true) {
-            process = fork();
-            if (process > (pid_t) 0) {
-                waitpid(0, &status2, 0);
-            } else if (process == (pid_t) 0) {
+            int error = 0;
+            retval = run_commands(pipe_commands[0], false, wait, &background_pid, &error);
+            if (error) {
                 continue;
-            } 
+            }
         }
 
-        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);    
-        if (process != NULL || status2 != NULL) {
-            return 0;
-        } 
+        if (!wait) {
+            job.pid = background_pid;
+            push(&jobs, job);
+        }
+
+        if (wait && arg > 1) {
+            waitpid(0, &retval, 0);  // inconsistant
+            /*for (size_t i=0; i<arg; i++) {
+                printf("waiting on pid: %d i: %d\n", pipe_pids[0], 0);
+                waitpid(pipe_pids[i], &retval, 0);
+            }*/
+        }
+
+        int job_status;
+        pid_t return_pid ;
+        struct Node *pids = jobs;
+        while (pids != NULL) {
+            return_pid = waitpid(pids->data.pid, &job_status, WNOHANG);
+            if (return_pid == pids->data.pid) {
+                fprintf(stderr, "+ completed '%s' [%d]\n", pids->data.cmd, job_status);
+                delete(jobs, pids->data.pid);
+            }
+            pids = pids->next;
+        }
+
+        if (wait) {
+            fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
+        }
     }
 
     return EXIT_SUCCESS;
