@@ -156,6 +156,37 @@ char parse_redirection(char **output, const char *cmd) {
     return 'x';
 }
 
+void setup_pipes(pid_t (*mypipes)[2], int i, int NUM_PIPES) {
+    if (NUM_PIPES > 1) {
+        if (i == 0) {
+            close(mypipes[0][0]);
+            dup2(mypipes[0][1], STDOUT_FILENO);    /* WRITE TO NEXT COMMANDS INPUT */
+            close(mypipes[0][1]);
+        } else if (i < NUM_PIPES) {
+            close(mypipes[i-1][1]);
+            dup2(mypipes[i-1][0], STDIN_FILENO);  /* READ FROM PREVIOUS COMMANDS OUTPUT */
+            close(mypipes[i-1][0]);
+            close(mypipes[i][0]);
+            dup2(mypipes[i][1], STDOUT_FILENO);   /* WRITE TO NEXT COMMANDS INPUT */
+            close(mypipes[i][1]);
+        } else if (i == NUM_PIPES) {
+            close(mypipes[i-1][1]);
+            dup2(mypipes[i-1][0], STDIN_FILENO);    /* READ FROM PREVIOUS COMMANDS OUTPUT */
+            close(mypipes[i-1][0]);
+        }
+    } else {
+        if (i == 0) {
+            close(mypipes[0][0]);
+            dup2(mypipes[0][1], STDOUT_FILENO);
+            close(mypipes[0][1]);
+        } else {
+            close(mypipes[0][1]);
+            dup2(mypipes[0][0], STDIN_FILENO);
+            close(mypipes[0][0]);
+        }
+    }
+}
+
 int run_commands(
     char *cmd,
     bool flag,
@@ -345,34 +376,7 @@ int main(void) {
                 pid = fork();
                 if (pid == (pid_t) 0) {
                     /* This is the child process */
-                    if (arg > 2) {
-                        if (i == 0) {
-                            close(mypipes[0][0]);
-                            dup2(mypipes[0][1], STDOUT_FILENO);    /* WRITE TO NEXT COMMANDS INPUT */
-                            close(mypipes[0][1]);
-                        } else if (i < NUM_PIPES) {
-                            close(mypipes[i-1][1]);
-                            dup2(mypipes[i-1][0], STDIN_FILENO);  /* READ FROM PREVIOUS COMMANDS OUTPUT */
-                            close(mypipes[i-1][0]);
-                            close(mypipes[i][0]);
-                            dup2(mypipes[i][1], STDOUT_FILENO);   /* WRITE TO NEXT COMMANDS INPUT */
-                            close(mypipes[i][1]);
-                        } else if (i == NUM_PIPES) {
-                            close(mypipes[i-1][1]);
-                            dup2(mypipes[i-1][0], STDIN_FILENO);    /* READ FROM PREVIOUS COMMANDS OUTPUT */
-                            close(mypipes[i-1][0]);
-                        }
-                    } else {
-                        if (i == 0) {
-                            close(mypipes[0][0]);
-                            dup2(mypipes[0][1], STDOUT_FILENO);
-                            close(mypipes[0][1]);
-                        } else {
-                            close(mypipes[0][1]);
-                            dup2(mypipes[0][0], STDIN_FILENO);
-                            close(mypipes[0][0]);
-                        }
-                    }
+                    setup_pipes(mypipes, i, NUM_PIPES);
 
                     int error = 0;
                     run_commands(pipe_commands[i], true, wait, &pipe_pid, &error, jobs!=NULL);
