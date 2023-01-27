@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <stdbool.h> // Header-file for boolean data-type.
 #include <ctype.h>
+#include <errno.h>
 
 
 #define CMDLINE_MAX 512
@@ -32,13 +33,13 @@ void push(struct Node **head, struct Job data) {
 	(*head) = new_node;
 }
 
-void delete(struct Node *head, int pid) {
+void delete(struct Node **head, int pid) {
     if (head == NULL) {
         return;
     }
 
     struct Node *prev = NULL;
-    struct Node *current = head;
+    struct Node *current = *head;
     while (current->data.pid != pid) {
         if (current->next == NULL) {
             return;
@@ -47,8 +48,8 @@ void delete(struct Node *head, int pid) {
         current = current->next;
     }
 
-    if (current == head) {
-        head = head->next;
+    if (current == *head) {
+        *head = (*head)->next;
         return;
     }
 
@@ -155,7 +156,14 @@ char parse_redirection(char **output, const char *cmd) {
     return 'x';
 }
 
-int run_commands(char *cmd, bool flag, bool wait, pid_t *background_pid, int *error) {
+int run_commands(
+    char *cmd,
+    bool flag,
+    bool wait,
+    pid_t *background_pid,
+    int *error,
+    bool running_jobs
+) {
     int retval;
 
     char stripped[CMDLINE_MAX];
@@ -195,13 +203,20 @@ int run_commands(char *cmd, bool flag, bool wait, pid_t *background_pid, int *er
 
     /* Builtin commands */
     if (!strcmp(array[0], "exit")) {
-        fprintf(stderr, "Bye...\n");
-        fprintf(stderr, "+ completed 'exit' [0]\n");
-        exit(EXIT_SUCCESS);
+        if (!running_jobs) {
+            fprintf(stderr, "Bye...\n");
+            fprintf(stderr, "+ completed 'exit' [0]\n");
+            exit(EXIT_SUCCESS);
+        }
+        fprintf(stderr, "Error: active jobs still running\n");
+        return 1;
     } else if (!strcmp(array[0], "cd")) {
         int retval = chdir(array[1]);
-        fprintf(stderr, "+ completed 'cd %s' [%d]\n", array[1], retval);
-        return retval;
+        if (retval == -1) {
+            fprintf(stderr, "Error: cannot cd into directory\n");
+            return 1;
+        }
+        return 0;
     }
 
 
@@ -235,10 +250,12 @@ int run_commands(char *cmd, bool flag, bool wait, pid_t *background_pid, int *er
             }
 
             execvp(array[0], array);
+            fprintf(stderr, "Error: command not found\n");
             exit(1);
         }
     } else {
         execvp(array[0], array);
+        fprintf(stderr, "Error: command not found\n");
         exit(1);
     }
     return retval;
@@ -358,7 +375,7 @@ int main(void) {
                     }
 
                     int error = 0;
-                    run_commands(pipe_commands[i], true, wait, &pipe_pid, &error);
+                    run_commands(pipe_commands[i], true, wait, &pipe_pid, &error, jobs!=NULL);
                     fprintf(stderr, "failed %s", pipe_commands[i]);
                     exit(EXIT_FAILURE);
                 } else if (pid < (pid_t) 0) {
@@ -373,7 +390,7 @@ int main(void) {
             }
         } else {  /* No Pipe Commands*/
             int error = 0;
-            retval = run_commands(pipe_commands[0], false, wait, &background_pid, &error);
+            retval = run_commands(pipe_commands[0], false, wait, &background_pid, &error, jobs!=NULL);
             if (error) {
                 continue;
             }
@@ -397,7 +414,7 @@ int main(void) {
             return_pid = waitpid(pids->data.pid, &job_status, WNOHANG);
             if (return_pid == pids->data.pid) {
                 fprintf(stderr, "+ completed '%s' [%d]\n", pids->data.cmd, job_status);
-                delete(jobs, pids->data.pid);
+                delete(&jobs, pids->data.pid);
             }
             pids = pids->next;
         }
