@@ -187,6 +187,20 @@ void setup_pipes(pid_t (*mypipes)[2], int i, int NUM_PIPES) {
     }
 }
 
+void file_redirection(char *file, char mode) {
+    if (file != NULL) {
+        FILE *success;
+        if (mode == 'w') {
+            success = freopen(file, "w+", stdout);
+        } else {
+            success = freopen(file, "a+", stdout);
+        }
+        if (success == NULL) {
+            exit(UNLIKELY_RETVAL);
+        }
+    }
+}
+
 int run_commands(
     char *cmd,
     bool flag,
@@ -267,24 +281,15 @@ int run_commands(
                 }
             }
         } else {
-            // redirection
-            if (output != NULL) {
-                FILE *success;
-                if (mode == 'w') {
-                    success = freopen(output, "w+", stdout);
-                } else {
-                    success = freopen(output, "a+", stdout);
-                }
-                if (success == NULL) {
-                    exit(UNLIKELY_RETVAL);
-                }
-            }
+            file_redirection(output, mode);
 
             execvp(array[0], array);
             fprintf(stderr, "Error: command not found\n");
             exit(1);
         }
     } else {
+        file_redirection(output, mode);
+
         execvp(array[0], array);
         fprintf(stderr, "Error: command not found\n");
         exit(1);
@@ -343,7 +348,8 @@ int main(void) {
             continue;
         }
 
-        /* Tokenize arguments using pipe character as delimiter (At most 3 pipe ops) */
+        /* Tokenize arguments using pipe character as delimiter
+        (At most 3 pipe ops) */
         char *pipe_commands[MAX_PIPES];
         size_t arg = split_string(pipe_commands, cmd, "|");
 
