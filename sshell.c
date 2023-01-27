@@ -55,6 +55,21 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
     return out_size;
 }
 
+void background_check(bool *wait, char **array) {
+    int i = 0;
+    while (array[i] != NULL) {
+        char *amper = strchr(array[i], '&');
+        int last_index = strlen(array[i]) - 1;
+        if (array[i][last_index] == '&' && array[i+1] == NULL) { // Found Ampersand, Last element & Last Character
+            *wait = true;
+            array[i][last_index] = NULL;
+        } else if (!strcmp(array[i], "&") || amper != NULL) {
+            printf("Error: mislocated background sign\n"); // Found Ampersand as an argument
+            exit(1);
+        }
+        i++;
+    }
+}
 
 size_t split_string(char **array, char *str, char *split) {
     char str_copy[50];
@@ -90,7 +105,7 @@ size_t split_string(char **array, char *str, char *split) {
     return arg;
 }
 
-int run_commands(char *cmd, bool flag) {
+int run_commands(char *cmd, bool flag, bool *wait) {
     //fprintf(stderr, "Run command: %s\n", cmd);
     int retval;
     
@@ -130,24 +145,21 @@ int run_commands(char *cmd, bool flag) {
 
     /* Regular command */
     int status;
+    background_check(wait, array);
 
     if (!flag) {
         if (fork()) {
             waitpid(-1, &status, 0);
-        
             retval = WEXITSTATUS(status);
         } else {
             if (output != NULL) {
                 freopen(output, "w+", stdout); 
             }
 
-            //fprintf(stderr, "!Flag Execution %d: '%s'\n", 0, array[0]);
             execvp(array[0], array);
-
             exit(1);
         }
     } else {
-        //fprintf(stderr, "+Flag Execution %d: '%s'\n", 0, array[0]);
         execvp(array[0], array);
         exit(1);
     }
@@ -159,10 +171,10 @@ int run_commands(char *cmd, bool flag) {
 int main(void) {
     
     char cmd[CMDLINE_MAX];
-
     while (1) {
         int retval;
         char *newLine;
+        bool wait = false;
 
         /* Shell prompt */
         printf("sshell@ucd$ ");
@@ -234,7 +246,7 @@ int main(void) {
                         }
                     }
 
-                    run_commands(pipe_commands[i], true);
+                    run_commands(pipe_commands[i], true, &wait);
                     exit(EXIT_FAILURE);
                 } else if (pid < (pid_t) 0) {
                     fprintf(stderr, "Fork %d failed.\n", i);
@@ -248,10 +260,32 @@ int main(void) {
             }
         } else {  /* No Pipe Commands*/
             printf("3\n");
-            retval = run_commands(pipe_commands[0], false);
+            retval = run_commands(pipe_commands[0], false, &wait);
         }
         
-        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
+        int status1;
+
+        if (wait != true) {
+            waitpid(0, &status1, 0);
+        }
+
+        
+        int status2;
+        pid_t process;
+        
+        if (wait == true) {
+            process = fork();
+            if (process > (pid_t) 0) {
+                waitpid(0, &status2, 0);
+            } else if (process == (pid_t) 0) {
+                continue;
+            } 
+        }
+
+        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);    
+        if (process != NULL || status2 != NULL) {
+            return 0;
+        } 
     }
 
     return EXIT_SUCCESS;
