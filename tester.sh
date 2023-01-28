@@ -338,20 +338,22 @@ TEST_CASES+=("pipe_redirect")
 ## Mine: Mislocated output redirection
 mislocated_redir() {
     log "--- Running test case: ${FUNCNAME} ---"
+    echo "Content" > t
     run_test_case "echo Hello world > t | cat t\nexit\n"
     rm -f t
 
     local line_array=()
     line_array+=("$(select_line "${STDERR}" "1")")
+    line_array+=("$(select_line "${STDOUT}" "2")")
     local corr_array=()
     corr_array+=("Error: mislocated output redirection")
+    corr_array+=("sshell@ucd$ exit")
 
     local score
     compare_lines line_array[@] corr_array[@] score
     log "${score}"
 }
 TEST_CASES+=("mislocated_redir")
-
 
 
 ## Extra feature #1: stdout appending

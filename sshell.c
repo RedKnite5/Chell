@@ -204,6 +204,17 @@ void complete_message(const char *cmd, const int *status, int size) {
     fprintf(stderr, "\n");
 }
 
+bool check_improper_redir(char **pipe_commands, int NUM_PIPES) {
+    for (int i=0; i<NUM_PIPES; i++) {
+        char *arrow = strchr(pipe_commands[i], '>');
+        if (arrow != NULL) {
+            fprintf(stderr, "Error: mislocated output redirection\n");
+            return true;
+        }
+    }
+    return false;
+}
+
 int run_commands(
     const char *cmd_args,
     bool piping,
@@ -378,12 +389,8 @@ int main(void) {
             pid_t pid;
             int mypipes[arg][2];
 
-            for (int i=0; i<NUM_PIPES; i++) {
-                char *arrow = strchr(pipe_commands[i], '>');
-                if (arrow != NULL) {
-                    fprintf(stderr, "Error: mislocated output redirection\n");
-                    continue;
-                }
+            if (check_improper_redir(pipe_commands, NUM_PIPES)) {
+                continue;
             }
 
             /* Create child processes*/
