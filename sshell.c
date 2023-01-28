@@ -285,7 +285,8 @@ int run_commands(
         if (getcwd(cwd, sizeof(cwd)) == NULL) {
             return 1;
         }
-        printf("%s\n", cwd);
+        // os may buffer until after stderr gets written to??
+        puts(cwd);
         return 0;
     }
 
