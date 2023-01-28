@@ -7,6 +7,7 @@
 #include <stdbool.h> // Header-file for boolean data-type.
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 
 #define CMDLINE_MAX 512
 #define MAX_PIPES 5
@@ -243,14 +244,15 @@ int run_commands(
 
     /* Builtin commands */
     if (!strcmp(array[0], "exit")) {
-        if (!running_jobs) {
-            fprintf(stderr, "Bye...\n");
-            fprintf(stderr, "+ completed 'exit' [0]\n");
-            exit(EXIT_SUCCESS);
+        if (running_jobs) {
+            fprintf(stderr, "Error: active jobs still running\n");
+            return 1;
         }
-        fprintf(stderr, "Error: active jobs still running\n");
-        return 1;
-    } else if (!strcmp(array[0], "cd")) {
+        fprintf(stderr, "Bye...\n");
+        fprintf(stderr, "+ completed 'exit' [0]\n");
+        exit(EXIT_SUCCESS);
+    }
+    if (!strcmp(array[0], "cd")) {
         int retval = chdir(array[1]);
         if (retval == -1) {
             fprintf(stderr, "Error: cannot cd into directory\n");
@@ -258,29 +260,38 @@ int run_commands(
         }
         return 0;
     }
+    if (!strcmp(array[0], "pwd")) {
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd)) == NULL) {
+            return 1;
+        }
+        printf("%s\n", cwd);
+        return 0;
+    }
 
+
+    /* Piped command */
+    int status;
+    if (piping) {
+        file_redirection(output, mode);
+
+        execvp(array[0], array);
+        fprintf(stderr, "Error: command not found\n");
+        exit(1);
+    }
 
     /* Regular command */
-    int status;
-    if (!piping) {
-        int pid = fork();
-        *background_pid = pid;
-        if (pid) {
-            if (wait) {
-                waitpid(pid, &status, 0);
-                retval = WEXITSTATUS(status);
-                if (retval == UNLIKELY_RETVAL) {
-                    fprintf(stderr, "Error: cannot open output file\n");
-                    *error = 1;
-                    return 1;
-                }
+    int pid = fork();
+    *background_pid = pid;
+    if (pid) {
+        if (wait) {
+            waitpid(pid, &status, 0);
+            retval = WEXITSTATUS(status);
+            if (retval == UNLIKELY_RETVAL) {
+                fprintf(stderr, "Error: cannot open output file\n");
+                *error = 1;
+                return 1;
             }
-        } else {
-            file_redirection(output, mode);
-
-            execvp(array[0], array);
-            fprintf(stderr, "Error: command not found\n");
-            exit(1);
         }
     } else {
         file_redirection(output, mode);
