@@ -142,12 +142,11 @@ char parse_redirection(char **output, const char *cmd) {
     memcpy(str_copy, cmd, CMDLINE_MAX);
 
     split_string(output, cmd, ">>");
-    if (output != NULL) {
+    if (strstr(cmd, ">>") != NULL) {
         return 'a';
     }
-
     split_string(output, cmd, ">");
-    if (output != NULL) {
+    if (strstr(cmd, ">") != NULL) {
         return 'w';
     }
     return 'x';  // not used

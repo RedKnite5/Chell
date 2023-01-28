@@ -187,6 +187,24 @@ cmd_one_arg() {
 }
 TEST_CASES+=("cmd_one_arg")
 
+## Mine: Too many arguments
+arg_over() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    mkdir dir_test && touch dir_test/lstest
+    run_test_case "ls 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16\nexit\n"
+    rm -rf dir_test
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    local corr_array=()
+    corr_array+=("Error: too many process arguments")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("arg_over")
+
 ## Builtin commands
 cd_pwd() {
     log "--- Running test case: ${FUNCNAME} ---"
@@ -205,6 +223,25 @@ cd_pwd() {
     log "${score}"
 }
 TEST_CASES+=("cd_pwd")
+
+## Mine: Command not found
+cmd_not_found() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "windows98\nexit\n"
+    rm -rf dir_test
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    line_array+=("$(select_line "${STDERR}" "2")")
+    local corr_array=()
+    corr_array+=("Error: command not found")
+    corr_array+=("+ completed 'windows98' [1]")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("cmd_not_found")
 
 ## Output redirection
 out_redir() {
