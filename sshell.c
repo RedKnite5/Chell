@@ -110,7 +110,7 @@ bool background_check(char *cmd, int *error) {
     }
 }
 
-size_t split_string(char **array, const char *str, char *split) {
+size_t split_string(char **array, const char *str, const char *split) {
     char str_copy[CMDLINE_MAX];
     memcpy(str_copy, str, CMDLINE_MAX);
 
@@ -196,7 +196,7 @@ void file_redirection(char *file, char mode) {
 }
 
 int run_commands(
-    char *cmd,
+    const char *cmd_args,
     bool piping,
     bool wait,
     pid_t *background_pid,
@@ -206,7 +206,7 @@ int run_commands(
     int retval;
 
     char stripped[CMDLINE_MAX];
-    trimwhitespace(stripped, CMDLINE_MAX, cmd);
+    trimwhitespace(stripped, CMDLINE_MAX, cmd_args);
     if (*stripped == '>') {
         fprintf(stderr, "Error: missing command\n");
         *error = 1;
@@ -221,7 +221,8 @@ int run_commands(
 
     char *output = NULL;
     char *redirection[3];
-    char mode = parse_redirection(redirection, cmd);
+    char mode = parse_redirection(redirection, cmd_args);
+    char cmd[CMDLINE_MAX];
     strcpy(cmd, redirection[0]);
 
     if (redirection[1] != NULL) {
