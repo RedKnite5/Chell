@@ -1,6 +1,6 @@
-# Project 1: sshell
+# Project 1: sshell 🐚
 
-## Introduction
+## Introduction 
 The goal of this project was to understand how to use UNIX system calls and implement a
 simple command line interpreter using the C programming language and the GCC compiler.
 Our shell accepts commands from user input and executes them. 
