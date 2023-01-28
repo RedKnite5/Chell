@@ -197,7 +197,7 @@ void file_redirection(char *file, char mode) {
 
 int run_commands(
     char *cmd,
-    bool flag,
+    bool piping,
     bool wait,
     pid_t *background_pid,
     int *error,
@@ -261,7 +261,7 @@ int run_commands(
 
     /* Regular command */
     int status;
-    if (!flag) {
+    if (!piping) {
         int pid = fork();
         *background_pid = pid;
         if (pid) {
