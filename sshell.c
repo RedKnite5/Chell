@@ -1,11 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <stdbool.h> // Header-file for boolean data-type.
-#include <ctype.h>
-#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>    // exit
+#include <string.h>    // memcpy strcpy strchr strtok strcmp strlen
+#include <sys/wait.h>  // waitpid
+#include <stdbool.h>   // Header-file for boolean data-type.
+#include <ctype.h>     // isspace
+#include <limits.h>    // PATH_MAX
 
 #define CMDLINE_MAX 512
 #define MAX_PIPES 5
