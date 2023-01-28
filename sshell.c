@@ -2,11 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/wait.h>
 #include <stdbool.h> // Header-file for boolean data-type.
 #include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 
 #define CMDLINE_MAX 512
@@ -465,7 +463,6 @@ int main(void) {
             if (return_pid == pids->data.pid) {
                 job_stat_arr[0] = job_status;
                 complete_message(pids->data.cmd, job_stat_arr, 1);
-                //fprintf(stderr, "+ completed '%s' [%d]\n", pids->data.cmd, job_status);
                 delete(&jobs, pids->data.pid);
             }
             pids = pids->next;
@@ -473,9 +470,7 @@ int main(void) {
 
         if (wait) {
             complete_message(cmd, exit_statuses, arg);
-            //fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
         }
     }
-
     return EXIT_SUCCESS;
 }
