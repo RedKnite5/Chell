@@ -300,6 +300,22 @@ pipe() {
 }
 TEST_CASES+=("pipe")
 
+## Mine: Piped commands display exit status
+pipe_exit_status() {
+    log "--- Running test case: ${FUNCNAME} ---"
+    run_test_case "cat /dev/urandom | base64 -w 80 | head -5\nexit\n"
+
+    local line_array=()
+    line_array+=("$(select_line "${STDERR}" "1")")
+    local corr_array=()
+    corr_array+=("+ completed 'cat /dev/urandom | base64 -w 80 | head -5' [0][0][0]")
+
+    local score
+    compare_lines line_array[@] corr_array[@] score
+    log "${score}"
+}
+TEST_CASES+=("pipe_exit_status")
+
 
 ## Mine: Piped commands end with redirect
 pipe_redirect() {
@@ -397,9 +413,9 @@ piped_cmds_exit() {
 
     corr_array+=("Test one")
     corr_array+=("Test two")
-    corr_array+=("+ completed 'cat t|grep Test' [0]")
+    corr_array+=("+ completed 'cat t|grep Test' [0][0]")
     corr_array+=("Three")
-    corr_array+=("+ completed 'cat t|cat|grep Three' [0]")
+    corr_array+=("+ completed 'cat t|cat|grep Three' [0][0][0]")
 
     local score
     compare_lines line_array[@] corr_array[@] score

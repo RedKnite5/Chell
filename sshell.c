@@ -196,6 +196,14 @@ void file_redirection(char *file, char mode) {
     }
 }
 
+void complete_message(const char *cmd, const int *status, int size) {
+    fprintf(stderr, "+ completed '%s' ", cmd);
+    for (int i=0; i<size; i++) {
+        fprintf(stderr, "[%d]", status[i]);
+    }
+    fprintf(stderr, "\n");
+}
+
 int run_commands(
     const char *cmd_args,
     bool piping,
@@ -361,7 +369,8 @@ int main(void) {
 
         int NUM_PIPES = arg-1;
 
-        pid_t pipe_pids[MAX_PIPES] = {0, 0, 0, 0, 0};
+        pid_t pipe_pids[MAX_PIPES] = {0};
+        int exit_statuses[MAX_PIPES] = {300};
         pid_t pipe_pid;  // not used
 
         /* Pipe Commands Present*/
@@ -391,7 +400,14 @@ int main(void) {
                     setup_pipes(mypipes, i, NUM_PIPES);
 
                     int error = 0;
-                    run_commands(pipe_commands[i], true, wait, &pipe_pid, &error, jobs!=NULL);
+                    run_commands(
+                        pipe_commands[i],
+                        true,
+                        wait,
+                        &pipe_pid,
+                        &error,
+                        jobs!=NULL);
+
                     fprintf(stderr, "failed %s", pipe_commands[i]);
                     exit(EXIT_FAILURE);
                 } else if (pid < (pid_t) 0) {
@@ -406,7 +422,16 @@ int main(void) {
             }
         } else {  /* No Pipe Commands*/
             int error = 0;
-            retval = run_commands(pipe_commands[0], false, wait, &background_pid, &error, jobs!=NULL);
+            retval = run_commands(
+                pipe_commands[0],
+                false,
+                wait,
+                &background_pid,
+                &error,
+                jobs!=NULL);
+
+            exit_statuses[0] = retval;
+
             if (error) {
                 continue;
             }
@@ -420,23 +445,28 @@ int main(void) {
         if (wait && arg > 1) {
             for (size_t i=0; i<arg; i++) {
                 waitpid(pipe_pids[i], &retval, 0);
+                exit_statuses[i] = retval;
             }
         }
 
         int job_status;
+        int job_stat_arr[1];  // do not support background pipe jobs
         pid_t return_pid ;
         struct Node *pids = jobs;
         while (pids != NULL) {
             return_pid = waitpid(pids->data.pid, &job_status, WNOHANG);
             if (return_pid == pids->data.pid) {
-                fprintf(stderr, "+ completed '%s' [%d]\n", pids->data.cmd, job_status);
+                job_stat_arr[0] = job_status;
+                complete_message(pids->data.cmd, job_stat_arr, 1);
+                //fprintf(stderr, "+ completed '%s' [%d]\n", pids->data.cmd, job_status);
                 delete(&jobs, pids->data.pid);
             }
             pids = pids->next;
         }
 
         if (wait) {
-            fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
+            complete_message(cmd, exit_statuses, arg);
+            //fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
         }
     }
 
