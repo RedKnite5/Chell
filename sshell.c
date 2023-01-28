@@ -1,9 +1,9 @@
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>    // exit
+#include <unistd.h>    // fork, etc..
+#include <stdio.h>     // printf, etc...
+#include <stdlib.h>    // exit, etc...
 #include <string.h>    // memcpy strcpy strchr strtok strcmp strlen
 #include <sys/wait.h>  // waitpid
-#include <stdbool.h>   // Header-file for boolean data-type.
+#include <stdbool.h>   // boolean data-type.
 #include <ctype.h>     // isspace
 #include <limits.h>    // PATH_MAX
 
