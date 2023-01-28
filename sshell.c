@@ -8,11 +8,11 @@
 #include <ctype.h>
 #include <errno.h>
 
-
 #define CMDLINE_MAX 512
 #define MAX_PIPES 5
 #define MAX_ARGS 16
 #define UNLIKELY_RETVAL 25
+
 
 struct Job {
     char cmd[CMDLINE_MAX];
@@ -56,16 +56,11 @@ void delete(struct Node **head, int pid) {
     prev->next = current->next;
 }
 
-
-
-// got this from https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
+// inspired by https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 // len is size of output buffer. Not string
 size_t trimwhitespace(char *out, size_t len, const char *str) {
     if (len == 0)
         return 0;
-
-    const char *end;
-    size_t out_size;
 
     // Move str to first non whitespace char
     while (isspace((unsigned char)*str)) {
@@ -76,6 +71,9 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
         *out = 0;
         return 1;
     }
+
+    const char *end;
+    size_t out_size;
 
     // Trim trailing space
     end = str + strlen(str) - 1;
@@ -122,7 +120,6 @@ size_t split_string(char **array, const char *str, char *split) {
     size_t arg = 0;
     while (strlen(token) > 0) {
         trimwhitespace(stripped, CMDLINE_MAX, token);
-        /*array[arg] = stripped;*/
 
         array[arg] = (char *)malloc(sizeof(char) * (strlen(stripped) + 1));
         strcpy(array[arg], stripped);
@@ -133,9 +130,7 @@ size_t split_string(char **array, const char *str, char *split) {
             break;
         }
     }
-
     array[arg] = NULL;
-
     return arg;
 }
 
@@ -152,7 +147,7 @@ char parse_redirection(char **output, const char *cmd) {
     if (output != NULL) {
         return 'w';
     }
-    return 'x';
+    return 'x';  // not used
 }
 
 void setup_pipes(pid_t (*mypipes)[2], int i, int NUM_PIPES) {
