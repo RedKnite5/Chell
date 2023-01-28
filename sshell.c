@@ -149,7 +149,7 @@ char parse_redirection(char **output, const char *cmd) {
     return 'x';  // not used
 }
 
-void setup_pipes(pid_t (*mypipes)[2], int i, int NUM_PIPES) {
+void setup_pipes(pid_t (*mypipes)[2], size_t i, size_t NUM_PIPES) {
     if (NUM_PIPES > 1) {
         if (i == 0) {
             close(mypipes[0][0]);
@@ -194,16 +194,16 @@ void file_redirection(char *file, char mode) {
     }
 }
 
-void complete_message(const char *cmd, const int *status, int size) {
+void complete_message(const char *cmd, const int *status, size_t size) {
     fprintf(stderr, "+ completed '%s' ", cmd);
-    for (int i=0; i<size; i++) {
+    for (size_t i=0; i<size; i++) {
         fprintf(stderr, "[%d]", status[i]);
     }
     fprintf(stderr, "\n");
 }
 
-bool check_improper_redir(char **pipe_commands, int NUM_PIPES) {
-    for (int i=0; i<NUM_PIPES; i++) {
+bool check_improper_redir(char **pipe_commands, size_t NUM_PIPES) {
+    for (size_t i=0; i<NUM_PIPES; i++) {
         char *arrow = strchr(pipe_commands[i], '>');
         if (arrow != NULL) {
             fprintf(stderr, "Error: mislocated output redirection\n");
@@ -376,11 +376,10 @@ int main(void) {
         char *pipe_commands[MAX_PIPES];
         size_t arg = split_string(pipe_commands, cmd, "|");
 
-        int NUM_PIPES = arg-1;
+        size_t NUM_PIPES = arg-1;
 
         pid_t pipe_pids[MAX_PIPES] = {0};
         int exit_statuses[MAX_PIPES] = {300};
-        pid_t pipe_pid;  // not used
 
         /* Pipe Commands Present*/
         if (arg > 1) {
@@ -405,6 +404,7 @@ int main(void) {
                     setup_pipes(mypipes, i, NUM_PIPES);
 
                     int error = 0;
+                    pid_t pipe_pid;  // value not used
                     run_commands(
                         pipe_commands[i],
                         true,
