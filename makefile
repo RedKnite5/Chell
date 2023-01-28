@@ -1,6 +1,6 @@
 
 sshell: sshell.c
-	gcc -Wall -Wextra -Werror sshell.c -o sshell
+	gcc -o2 -Wall -Wextra -Werror sshell.c -o sshell
 
 clean:
 	rm -f sshell *.txt
