@@ -95,6 +95,10 @@ size_t trimwhitespace(char *out, size_t len, const char *str) {
     return out_size;
 }
 
+int pstderr(const char *str) {
+    return fprintf(stderr, "%s\n", str);
+}
+
 bool background_check(char *cmd, int *error) {
     char *amper = strchr(cmd, '&');
     if (amper == NULL) {
@@ -103,7 +107,7 @@ bool background_check(char *cmd, int *error) {
         *amper = '\0';
         return false;
     } else {
-        fprintf(stderr, "Error: mislocated background sign\n"); // Found Ampersand not at the end
+        pstderr("Error: mislocated background sign"); // Found Ampersand not at the end
         *error = 1;
         return false;  // doesn't matter true or false
     }
@@ -206,7 +210,7 @@ bool check_improper_redir(char **pipe_commands, size_t NUM_PIPES) {
     for (size_t i=0; i<NUM_PIPES; i++) {
         char *arrow = strchr(pipe_commands[i], '>');
         if (arrow != NULL) {
-            fprintf(stderr, "Error: mislocated output redirection\n");
+            pstderr("Error: mislocated output redirection");
             return true;
         }
     }
@@ -226,13 +230,13 @@ int run_commands(
     char stripped[CMDLINE_MAX];
     trimwhitespace(stripped, CMDLINE_MAX, cmd_args);
     if (*stripped == '>') {
-        fprintf(stderr, "Error: missing command\n");
+        pstderr("Error: missing command");
         *error = 1;
         return 1;
     }
     char *end = strchr(stripped, '\0')-1;
     if (*end == '>') {
-        fprintf(stderr, "Error: no output file\n");
+        pstderr("Error: no output file");
         *error = 1;
         return 1;
     }
@@ -240,6 +244,7 @@ int run_commands(
     char *output = NULL;
     char *redirection[3];
     char mode = parse_redirection(redirection, cmd_args);
+
     char cmd[CMDLINE_MAX];
     strcpy(cmd, redirection[0]);
 
@@ -253,7 +258,7 @@ int run_commands(
     strcpy(cmd, array[0]);
 
     if (args > MAX_ARGS) {
-        fprintf(stderr, "Error: too many process arguments\n");
+        pstderr("Error: too many process arguments");
         *error = 1;
         return 1;
     }
@@ -261,17 +266,17 @@ int run_commands(
     /* Builtin commands */
     if (!strcmp(array[0], "exit")) {
         if (running_jobs) {
-            fprintf(stderr, "Error: active jobs still running\n");
+            pstderr("Error: active jobs still running");
             return 1;
         }
-        fprintf(stderr, "Bye...\n");
-        fprintf(stderr, "+ completed 'exit' [0]\n");
+        pstderr("Bye...");
+        pstderr("+ completed 'exit' [0]");
         exit(EXIT_SUCCESS);
     }
     if (!strcmp(array[0], "cd")) {
         int retval = chdir(array[1]);
         if (retval == -1) {
-            fprintf(stderr, "Error: cannot cd into directory\n");
+            pstderr("Error: cannot cd into directory");
             return 1;
         }
         return 0;
@@ -285,14 +290,13 @@ int run_commands(
         return 0;
     }
 
-
     /* Piped command */
     int status;
     if (piping) {
         file_redirection(output, mode);
 
         execvp(array[0], array);
-        fprintf(stderr, "Error: command not found\n");
+        pstderr("Error: command not found");
         exit(1);
     }
 
@@ -304,7 +308,7 @@ int run_commands(
             waitpid(pid, &status, 0);
             retval = WEXITSTATUS(status);
             if (retval == UNLIKELY_RETVAL) {
-                fprintf(stderr, "Error: cannot open output file\n");
+                pstderr("Error: cannot open output file");
                 *error = 1;
                 return 1;
             }
@@ -313,7 +317,7 @@ int run_commands(
         file_redirection(output, mode);
 
         execvp(array[0], array);
-        fprintf(stderr, "Error: command not found\n");
+        pstderr("Error: command not found");
         exit(1);
     }
     return retval;
@@ -366,7 +370,7 @@ int main(void) {
         trimwhitespace(stripped, CMDLINE_MAX, cmd);
         char *end = strchr(stripped, '\0')-1;
         if (*stripped == '|' || *end == '|') {
-            fprintf(stderr, "Error: missing command\n");
+            pstderr("Error: missing command");
             continue;
         }
 
@@ -412,7 +416,7 @@ int main(void) {
                         &error,
                         jobs!=NULL);
 
-                    fprintf(stderr, "failed %s", pipe_commands[i]);
+                    fprintf(stderr, "failed %s\n", pipe_commands[i]);
                     exit(EXIT_FAILURE);
                 } else if (pid < (pid_t) 0) {
                     fprintf(stderr, "Fork %d failed.\n", i);
