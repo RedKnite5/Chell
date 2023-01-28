@@ -258,7 +258,6 @@ int run_commands(
         return 1;
     }
 
-
     /* Builtin commands */
     if (!strcmp(array[0], "exit")) {
         if (running_jobs) {
