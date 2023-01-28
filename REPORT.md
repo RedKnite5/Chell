@@ -1,10 +1,10 @@
 # Project 1: sshell 🐚
 
-## Introduction 
+## Introduction
 The goal of this project was to understand how to use UNIX system calls and implement a
 simple command line interpreter using the C programming language and the GCC compiler.
-Our shell accepts commands from user input and executes them. 
- 
+Our shell accepts commands from user input and executes them.
+
 ## Core Features✨
 
 - Execution of user supplied commands with optional arguments
@@ -37,14 +37,14 @@ execution, redirection, and piping. It also has a linked list implementation to
 keep track of background processes. The program uses various standard C
 libraries such as unistd.h, stdio.h, stdlib.h, string.h, sys/wait.h, stdbool.h
 and ctype.h for various operations such as forking, execution, memory
-allocation, string manipulation, and error handling. 
+allocation, string manipulation, and error handling.
 
 Our program starts by defining several constants such as the maximum length of the
 command line, the maximum number of pipes, and the maximum number of arguments. It also
 includes several header files such as stdio.h, stdlib.h, string.h, unistd.h, and sys/
 wait.h which are used for various purposes such as input/output operations, memory
 allocation, string manipulation, and job (process) management.
- 
+
 ### Data Structures
 Our defined struct, Job, contains two fields, cmd and pid, which store the command and
 the process ID of the job, respectively. The second struct, Node, contains three
@@ -63,10 +63,10 @@ from the list by adjusting the pointers.
 
 
 ### Main
-The main function of the code is the starting point of execution. It is responsible for 
+The main function of the code is the starting point of execution. It is responsible for
 coordinating the overall flow of the program, including initializing variables and
 objects, calling other functions, and handling any input/output. In this code, the main
-function performs several key tasks. 
+function performs several key tasks.
 
 First, it initializes any necessary variables and objects that will be used throughout
 the program. This may include creating instances of classes, setting default values,
@@ -108,7 +108,7 @@ and then a fork is performed to create a new child process.
   * If the return value of fork is 0, it means that the code is running in the child
   process, and the child process's pipe is set up using the setup_pipes function, and
   the command is executed using the run_commands function.
-  
+
 
   * If the return value of fork is greater than 0, it means that the code is running in
   the parent process, and the parent process closes the pipe and records the process ID
@@ -120,24 +120,19 @@ and then a fork is performed to create a new child process.
   * If there are no pipe commands, the run_commands function is called to execute the
   single command without piping. And the retval is set to the return value of the
   run_commands function.
-  
+
 ### Background Jobs
-The background_check function is responsible for checking the status of background
-processes. It does this by calling the waitpid() function with the WNOHANG option,
-which allows the function to check the status of a child process without blocking. If
-the child process has terminated, the function will update the status of the process in
-the jobs list and print a message indicating that the process has completed. If the
-child process has not terminated, the function will do nothing. This function is
-typically called periodically by the main loop of the program, allowing it to check the
-status of background processes and update the user on their status. Overall, this
-function provides the functionality for monitoring and managing background processes.
+Near the end of the main while loop is a block of code responsible for checking the
+status of background processes. It does this by calling the waitpid() function with
+the WNOHANG option, which allows the function to check the status of a child process
+without blocking. If the child process has terminated, the function will update the
+status of the process in the jobs list and print a message indicating that the process
+has completed. If the child process has not terminated, it will do nothing.
+Because this runs at the end of the main loop of the program, it periodically
+checks the status of background processes and update the user on their status.
+Overall, this provides the functionality for monitoring and managing background
+processes.
 
-
-The program also has a signal handler which is invoked when a child process terminates.
-The signal handler uses the waitpid() function to wait for the child process to
-terminate and retrieves the process ID of the terminated process. It then uses the
-delete() function to remove the corresponding Job from the linked list of background
-jobs.
 
 # Testing
 
@@ -164,7 +159,7 @@ the exit status.
 output of a piped command to a file, and checking if the output was correctly
 written to the file.
 
-* We also wrote test function to check if piped commands exits correctly, by
+* We also wrote test function to check if piped commands exit correctly, by
 running a command that included a pipe and checking the exit status.
 
 * Finally, we wrote a test function to check if the program could handle
